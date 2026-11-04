@@ -1,6 +1,4 @@
 # OSX
-#
-.DS_Store
 
 # Xcode
 #
@@ -21,6 +19,33 @@ DerivedData
 *.ipa
 *.xcuserstate
 **/.xcode.env.local
+
+#Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# React Native
+android/.gradle/
+android/app/build/
+ios/Pods/
+
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
 
 # Android/IntelliJ
 #
