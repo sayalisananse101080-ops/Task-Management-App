@@ -26,7 +26,6 @@ const AddEditTaskScreen = ({navigation}: Props) => {
     }
     try{
       setError("");
-      createTask(title, description, status, priority)
       const newTask = await createTask(
         title.trim(),
         description.trim(),

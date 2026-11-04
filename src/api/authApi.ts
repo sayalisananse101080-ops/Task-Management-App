@@ -1,70 +1,133 @@
-const BASE_URL = 'http://192.168.0.20:8000';
-export const signupUser = async (userData: any) => {
-    const payload = {
-        name: userData.name.trim(),
-        username: userData.username.trim(),
-        email: userData.email.trim().toLowerCase(),
-        password: userData.password,
 
-        address:{
-            street: userData.street,
-            suite: userData.suite,
-            city: userData.city,
-            zipcode: userData.zipcode,
-        
-        geo:{
-            lat: userData.lat,
-            lng: userData.lng,
-        },
-    },
-        phone: userData.phone,
-        website: userData.website,
-        company:{
-            name: userData.company_name,
-            catchPhrase: userData.catchPhrase,
-            bs: userData.bs,
-        },
-    };
-    console.log('Signup payload:', payload);
-    
-  const response = await fetch(`${BASE_URL}/auth/signup`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json();
-
-  if (!response.ok) {
-    const message = Array.isArray(data.detail)
-      ? data.detail.map((err: any) =>
-          `${err.loc.join('.')}: ${err.msg}`
-        ).join('\n')
-      : data.detail || 'Registration failed';
-    throw new Error(message);
-  }
-  return data;
-};
-
-export const loginUser = async(email: string, password: string) =>{
-    const response = await fetch(`${BASE_URL}/auth/login`,{
-        method:'POST',
-        headers:{
-            'Content-Type':'application/json',
-        },
-        body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password: password,
-        }),
-    });
-    const data = await response.json();
-
-    if(!response.ok){
-        throw new Error(
-            typeof data.detail === 'string'?
-            data.detail:"Login falied. Please check your credentials.",
-        );
+import { Platform } from 'react-native';
+ 
+// ================== IMPORTANT: ITHE APLA IP TAKA ==================
+// PC var `ipconfig` run kra -> "IPv4 Address" (Wi-Fi) copy kra.
+// Phone ani PC EKACH Wi-Fi var asle pahije.
+const PC_IP = '192.168.0.20';
+ 
+// Android Emulator sathi PC cha address 10.0.2.2 asto
+// (physical phone sathi PC cha IP vapra).
+const IS_ANDROID_EMULATOR = false; // emulator vaprat asal tr true kra
+ 
+export const BASE_URL =
+    Platform.OS === 'android' && IS_ANDROID_EMULATOR
+        ? 'http://10.0.2.2:8000'
+        : 'http://192.168.0.20:8000';
+// ===================================================================
+ 
+const TIMEOUT_MS = 15000;
+ 
+// Common request helper: timeout + clear error messages
+async function request(path: string, body: unknown) {
+    const url = `${BASE_URL}${path}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+ 
+    try {
+        console.log('API URL:', url);
+ 
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+        });
+ 
+        let data: any = null;
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
+ 
+        console.log('API STATUS:', response.status, data);
+ 
+        if (!response.ok) {
+            // FastAPI validation error (422) detail ha array asto
+            let message = 'Request failed';
+            if (typeof data?.detail === 'string') {
+                message = data.detail;
+            } else if (Array.isArray(data?.detail)) {
+                message = data.detail
+                    .map((d: any) => `${(d.loc || []).slice(1).join('.')}: ${d.msg}`)
+                    .join('\n');
+            }
+            throw new Error(message);
+        }
+ 
+        return data;
+    } catch (error: any) {
+        if (error?.name === 'AbortError') {
+            throw new Error(
+                `Server la reach hot nahi (timeout).\nURL: ${url}\nPC cha IP, Wi-Fi ani firewall tapasa.`,
+            );
+        }
+        if (error?.message?.includes('Network request failed')) {
+            throw new Error(
+                `Server shi connect hot nahi.\nURL: ${url}\n\n` +
+                `1) Backend --host 0.0.0.0 ne chalu ahe ka?\n` +
+                `2) Phone ani PC same Wi-Fi var ahet ka?\n` +
+                `3) PC cha IP barobar ahe ka?\n` +
+                `4) Windows Firewall la port 8000 allow kela ahe ka?`,
+            );
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
     }
-    return data;
 }
+ 
+export const loginUser = async (email: string, password: string) => {
+    return request('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password,
+    });
+};
+ 
+// SignupScreen cha flat form -> backend la havi asleli nested JSON
+export const signupUser = async (form: {
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    street: string;
+    suite: string;
+    city: string;
+    zipcode: string;
+    lat: string;
+    lng: string;
+    phone: string;
+    website: string;
+    company_name: string;
+    catchPhrase: string;
+    bs: string;
+}) => {
+    return request('/auth/signup', {
+        name: form.name.trim(),
+        username: form.username.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+        address: {
+            street: form.street.trim(),
+            suite: form.suite.trim(),
+            city: form.city.trim(),
+            zipcode: form.zipcode.trim(),
+            geo: {
+                lat: form.lat.trim(),
+                lng: form.lng.trim(),
+            },
+        },
+        phone: form.phone.trim() || null,
+        website: form.website.trim() || null,
+        company: {
+            name: form.company_name.trim(),
+            catchPhrase: form.catchPhrase.trim(),
+            bs: form.bs.trim(),
+        },
+    });
+};
+ 

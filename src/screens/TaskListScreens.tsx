@@ -5,7 +5,8 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity }
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
-import { getTasks } from "../api/taskApi";
+import { getTasks, ApiError } from "../api/taskApi";
+import  AsyncStorage  from "@react-native-async-storage/async-storage";
 import type { Task } from "../types/task";
 type Props = NativeStackScreenProps<
     RootStackParamList,
@@ -26,6 +27,12 @@ const TaskListScreen = ({ navigation }: Props) => {
         }
         catch (error) {
             console.error('Task loading error:', error)
+            // Token expire zala asel tar parat login la pathva
+            if (error instanceof ApiError && error.status === 401) {
+                await AsyncStorage.multiRemove(['access_token', 'user_id', 'user_name']);
+                navigation.replace('Login');
+                return;
+            }
             setError(
                 error instanceof Error ?
                     error.message : String(error)
@@ -35,7 +42,7 @@ const TaskListScreen = ({ navigation }: Props) => {
         finally {
             setLoading(false);
         }
-    }, []);
+    }, [navigation]);
 
     useFocusEffect(
         useCallback(() => {
