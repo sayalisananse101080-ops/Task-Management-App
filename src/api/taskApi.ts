@@ -1,7 +1,7 @@
 import type { Task, TaskStatus } from "../types/task";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BASE_URL } from "./authApi";
- 
+// import { BASE_URL } from "./authApi";
+const BASE_URL='http://192.168.0.15:8000'; 
 // 401 (token expire / login nahi) olakhnyasathi
 export class ApiError extends Error {
   status: number;

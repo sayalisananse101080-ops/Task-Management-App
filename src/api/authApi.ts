@@ -1,20 +1,25 @@
-
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
+ const BASE_URL='http://192.168.0.15:8000';
+// ================== BACKEND ADDRESS (AUTOMATIC) ==================
+// App Metro/Expo server kadun load hote, mhanje phone la PC cha IP
+// adhich mahit asto. Tochach IP backend sathi vaparto, mhanun
+// PC cha IP badalla tari app madhe kahi badlaych garaj nahi.
+const PC_IP_FALLBACK = '192.168.0.15'; // auto-detect fail zala tarach vapral jato
+const IS_ANDROID_EMULATOR = false;     // emulator vaprat asal tr true kra
  
-// ================== IMPORTANT: ITHE APLA IP TAKA ==================
-// PC var `ipconfig` run kra -> "IPv4 Address" (Wi-Fi) copy kra.
-// Phone ani PC EKACH Wi-Fi var asle pahije.
-const PC_IP = '192.168.0.20';
+function detectHost(): string {
+    try {
+        const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+        const match = scriptURL?.match(/^https?:\/\/([^:/]+)/);
+        if (match?.[1]) return match[1];
+    } catch {}
+    return PC_IP_FALLBACK;
+}
  
-// Android Emulator sathi PC cha address 10.0.2.2 asto
-// (physical phone sathi PC cha IP vapra).
-const IS_ANDROID_EMULATOR = false; // emulator vaprat asal tr true kra
- 
-export const BASE_URL =
-    Platform.OS === 'android' && IS_ANDROID_EMULATOR
-        ? 'http://10.0.2.2:8000'
-        : 'http://192.168.0.20:8000';
-// ===================================================================
+// export const BASE_URL =
+//     Platform.OS === 'android' && IS_ANDROID_EMULATOR
+//         ? 'http://10.0.2.2:8000'
+//         : 'http://192.168.0.15:8000';
  
 const TIMEOUT_MS = 15000;
  
@@ -63,16 +68,16 @@ async function request(path: string, body: unknown) {
     } catch (error: any) {
         if (error?.name === 'AbortError') {
             throw new Error(
-                `Server la reach hot nahi (timeout).\nURL: ${url}\nPC cha IP, Wi-Fi ani firewall tapasa.`,
+                `Server is not reachable (timeout).\nURL: ${url}\ncheck the PC's IP, Wi-Fi and firewall.`,
             );
         }
         if (error?.message?.includes('Network request failed')) {
             throw new Error(
-                `Server shi connect hot nahi.\nURL: ${url}\n\n` +
-                `1) Backend --host 0.0.0.0 ne chalu ahe ka?\n` +
-                `2) Phone ani PC same Wi-Fi var ahet ka?\n` +
-                `3) PC cha IP barobar ahe ka?\n` +
-                `4) Windows Firewall la port 8000 allow kela ahe ka?`,
+                `Unable to connect to the server.\nURL: ${url}\n\n` +
+                `1) Is the backend running with --host 0.0.0.0?\n` +
+                `2) Are the phone and PC connected to the same Wi-Fi network?\n` +
+                `3) Is the PC's IP address correct?\n` +
+                `4) Has port 8000 been allowed in Windows Firewall?`,
             );
         }
         throw error;
@@ -130,4 +135,3 @@ export const signupUser = async (form: {
         },
     });
 };
- 
